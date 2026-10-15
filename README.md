@@ -65,7 +65,7 @@ Soglia 70% EV                |      44,729 |      43,500 |       6,300 |      88
 ### Setup
 
 ```bash
-git clone https://github.com/tuonome/affari-tuoi-bot.git
+git clone https://github.com/aiprogramsbeenmade/Affari-Tuoi-Calc.git
 cd affari-tuoi-bot
 
 python -m venv .venv
@@ -219,7 +219,7 @@ mypy src/
 
 MIT License
 
-Copyright (c) 2026 Matteo Proietti Miccozzi
+Copyright (c) 2026 Matteo Proietti Micozzi
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -238,19 +238,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-## Comandi per il primo push su GitHub
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: Affari Tuoi Calc"
-git branch -M main
-git remote add origin https://github.com/tuonome/affari-tuoi-bot.git
-git push -u origin main
-```
-
-*(Ricordati di sostituire `tuonome` con il tuo username GitHub corretto).*
 
 ## Ringraziamenti
 

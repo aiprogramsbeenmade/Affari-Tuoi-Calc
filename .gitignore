@@ -117,3 +117,6 @@ Icon?
 *.tmp
 *.bak
 *.orig
+lib/
+bin/
+share/
