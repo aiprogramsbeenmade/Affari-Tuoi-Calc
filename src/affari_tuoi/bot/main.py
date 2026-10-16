@@ -87,6 +87,9 @@ def costruisci_application() -> Application:
         CallbackQueryHandler(handler_gioco.on_callback_pacco, pattern=r"^p:")
     )
     application.add_handler(
+        CallbackQueryHandler(handler_gioco.on_callback_speciale, pattern=r"^s:")
+    )
+    application.add_handler(
         CallbackQueryHandler(handler_gioco.on_callback_azione, pattern=r"^a:")
     )
 

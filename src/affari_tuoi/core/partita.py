@@ -61,7 +61,7 @@ class Pacco:
     Un singolo pacco della partita.
 
     Attributes:
-        id: identificatore del pacco (0-based, fino a NUM_PACCHI_STANDARD-1).
+        id: identificatore del pacco (0-based).
         valore: valore in euro contenuto nel pacco (nascosto al giocatore).
     """
 
@@ -117,6 +117,37 @@ class StatoPacchi:
         rng.shuffle(valori)
         pacchi = {i: Pacco(id=i, valore=v) for i, v in enumerate(valori)}
         return cls(_pacchi=pacchi)
+
+    @classmethod
+    def da_liste(
+        cls,
+        valori_rimasti: tuple[int, ...],
+        valori_aperti: tuple[int, ...] = (),
+        id_pacco_giocatore: int = 0,
+    ) -> "StatoPacchi":
+        """
+        Costruisce uno stato a partire da liste esplicite di valori.
+
+        Utile quando si conoscono già i valori aperti e chiusi (es. nel
+        consulente in tempo reale, per costruire una Partita virtuale).
+
+        Args:
+            valori_rimasti: valori dei pacchi ancora chiusi.
+            valori_aperti: valori dei pacchi già aperti.
+            id_pacco_giocatore: id del pacco del giocatore (default 0,
+                cioè il primo dei rimasti).
+
+        Returns:
+            StatoPacchi con i pacchi costruiti.
+        """
+        tutti = list(valori_rimasti) + list(valori_aperti)
+        pacchi = {i: Pacco(id=i, valore=v) for i, v in enumerate(tutti)}
+        aperti = set(range(len(valori_rimasti), len(tutti)))
+        return cls(
+            _pacchi=pacchi,
+            _aperti=aperti,
+            _pacco_giocatore_id=id_pacco_giocatore,
+        )
 
     # -- query ---------------------------------------------------------------
 

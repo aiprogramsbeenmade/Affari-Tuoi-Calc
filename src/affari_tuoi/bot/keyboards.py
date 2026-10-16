@@ -1,65 +1,43 @@
 """
 Costruzione delle tastiere inline per il bot.
 
-Contiene:
-- griglia dei 20 pacchi (5 colonne × 4 righe)
-- bottoni azione (offerta, annulla, termina)
-- bottoni per la scelta rapida dell'offerta
-- bottoni per accetta/rifiuta/cambia
+Usa `StatoEsteso` come stato canonico: la griglia mostra i valori
+numerici, i bottoni speciali mostrano Tommasino, Ballerina e Pacco Nero.
 """
 
 from __future__ import annotations
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-from affari_tuoi.core.consulente import StatoConsulente
+from affari_tuoi.core.premi import carica_configurazione_premi
+from affari_tuoi.core.stato_esteso import StatoEsteso
 
 
 # ---------------------------------------------------------------------------
-# Etichette compatte per i valori
+# Etichette
 # ---------------------------------------------------------------------------
 
 def etichetta_valore(valore: int) -> str:
-    """
-    Formatta un valore in modo compatto per un bottone Telegram.
-
-    Esempi:
-        0       -> "0"
-        500     -> "500"
-        5_000   -> "5k"
-        150_000 -> "150k"
-    """
+    """Formatta un valore in modo compatto per un bottone Telegram."""
     if valore < 1_000:
         return str(valore)
-    if valore < 10_000:
-        return f"{valore // 1_000}k"
     return f"{valore // 1_000}k"
 
 
 # ---------------------------------------------------------------------------
-# Griglia dei pacchi
+# Griglia dei pacchi numerici
 # ---------------------------------------------------------------------------
 
-#: Numero di colonne nella griglia dei pacchi.
 COLONNE_GRIGLIA: int = 5
 
 
 def griglia_pacchi(
-    stato: StatoConsulente,
+    stato: StatoEsteso,
     *,
     colonne: int = COLONNE_GRIGLIA,
 ) -> list[list[InlineKeyboardButton]]:
-    """
-    Costruisce la griglia dei pacchi rimasti.
-
-    Ogni bottone ha callback_data = "p:<valore>" (il valore è piccolo
-    e leggibile, così il callback resta corto).
-
-    I pacchi già aperti non compaiono: la griglia si "restringe".
-    """
-    valori = list(stato.valori_rimasti)  # già ordinati decrescenti
-    # Telegram non permette callback_data > 64 byte; "p:300000" è 9 byte,
-    # va benissimo.
+    """Griglia dei pacchi numerici rimasti."""
+    valori = list(stato.valori_numerici_rimasti)
 
     righe: list[list[InlineKeyboardButton]] = []
     for i in range(0, len(valori), colonne):
@@ -76,11 +54,33 @@ def griglia_pacchi(
 
 
 # ---------------------------------------------------------------------------
+# Bottoni speciali
+# ---------------------------------------------------------------------------
+
+def bottoni_speciali(
+    stato: StatoEsteso,
+) -> list[list[InlineKeyboardButton]]:
+    """
+    Bottoni per i pacchi speciali ancora chiusi.
+    """
+    config = carica_configurazione_premi()
+    riga: list[InlineKeyboardButton] = []
+    for s in config.pacchi_speciali:
+        if s.id in stato.speciali_chiusi:
+            riga.append(
+                InlineKeyboardButton(
+                    s.label,
+                    callback_data=f"s:{s.id}",
+                )
+            )
+    return [riga] if riga else []
+
+
+# ---------------------------------------------------------------------------
 # Bottoni azione
 # ---------------------------------------------------------------------------
 
 def bottoni_azione_apertura() -> list[InlineKeyboardButton]:
-    """Bottoni mostrati durante la fase di apertura pacchi."""
     return [
         InlineKeyboardButton("💰 Offerta ricevuta", callback_data="a:offerta"),
         InlineKeyboardButton("↩️ Annulla", callback_data="a:annulla"),
@@ -89,7 +89,6 @@ def bottoni_azione_apertura() -> list[InlineKeyboardButton]:
 
 
 def bottoni_azione_offerta() -> list[InlineKeyboardButton]:
-    """Bottoni mostrati quando c'è un'offerta sul tavolo."""
     return [
         InlineKeyboardButton("✅ Accetta", callback_data="a:accetta"),
         InlineKeyboardButton("❌ Rifiuta", callback_data="a:rifiuta"),
@@ -98,7 +97,6 @@ def bottoni_azione_offerta() -> list[InlineKeyboardButton]:
 
 
 def bottoni_azione_finale() -> list[InlineKeyboardButton]:
-    """Bottoni mostrati in fase finale (≤3 pacchi)."""
     return [
         InlineKeyboardButton("💰 Offerta ricevuta", callback_data="a:offerta"),
         InlineKeyboardButton("🔄 Analizza cambio", callback_data="a:cambio"),
@@ -108,10 +106,9 @@ def bottoni_azione_finale() -> list[InlineKeyboardButton]:
 
 
 # ---------------------------------------------------------------------------
-# Range per l'offerta
+# Range offerta
 # ---------------------------------------------------------------------------
 
-#: Range rapidi per l'offerta del Dottore (in euro).
 RANGE_OFFERTA: list[tuple[str, int, int]] = [
     ("< 10k", 0, 10_000),
     ("10-30k", 10_000, 30_000),
@@ -123,14 +120,6 @@ RANGE_OFFERTA: list[tuple[str, int, int]] = [
 
 
 def bottoni_range_offerta() -> list[list[InlineKeyboardButton]]:
-    """
-    Bottoni per la scelta rapida dell'importo dell'offerta.
-
-    Layout:
-        [< 10k]  [10-30k] [30-50k]
-        [50-80k] [80-120k] [> 120k]
-        [✏️ Scrivi importo]
-    """
     righe: list[list[InlineKeyboardButton]] = []
     riga_corrente: list[InlineKeyboardButton] = []
     for etichetta, minimo, massimo in RANGE_OFFERTA:
@@ -152,35 +141,32 @@ def bottoni_range_offerta() -> list[list[InlineKeyboardButton]]:
 
 
 # ---------------------------------------------------------------------------
-# Composizione completa della tastiera
+# Composizione
 # ---------------------------------------------------------------------------
 
-def tastiera_apertura(stato: StatoConsulente) -> InlineKeyboardMarkup:
-    """Tastiera completa in fase di apertura pacchi."""
+def tastiera_apertura(stato: StatoEsteso) -> InlineKeyboardMarkup:
     righe = griglia_pacchi(stato)
+    righe.extend(bottoni_speciali(stato))
     righe.append(bottoni_azione_apertura())
     return InlineKeyboardMarkup(righe)
 
 
-def tastiera_offerta(stato: StatoConsulente) -> InlineKeyboardMarkup:
-    """Tastiera quando c'è un'offerta sul tavolo (accetta/rifiuta)."""
-    righe = [bottoni_azione_offerta()]
-    return InlineKeyboardMarkup(righe)
+def tastiera_offerta(stato: StatoEsteso) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([bottoni_azione_offerta()])
 
 
-def tastiera_finale(stato: StatoConsulente) -> InlineKeyboardMarkup:
-    """Tastiera in fase finale (≤3 pacchi)."""
+def tastiera_finale(stato: StatoEsteso) -> InlineKeyboardMarkup:
     righe = griglia_pacchi(stato)
+    righe.extend(bottoni_speciali(stato))
     righe.append(bottoni_azione_finale())
     return InlineKeyboardMarkup(righe)
 
 
 def tastiera_range_offerta() -> InlineKeyboardMarkup:
-    """Tastiera per la scelta dell'importo dell'offerta."""
     return InlineKeyboardMarkup(bottoni_range_offerta())
 
+
 def tastiera_dopo_fine() -> InlineKeyboardMarkup:
-    """Tastiera mostrata dopo la fine della partita."""
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("📋 Report completo", callback_data="a:report"),
@@ -188,9 +174,11 @@ def tastiera_dopo_fine() -> InlineKeyboardMarkup:
         ]
     ])
 
+
 __all__ = [
     "etichetta_valore",
     "griglia_pacchi",
+    "bottoni_speciali",
     "bottoni_azione_apertura",
     "bottoni_azione_offerta",
     "bottoni_azione_finale",
@@ -199,5 +187,6 @@ __all__ = [
     "tastiera_offerta",
     "tastiera_finale",
     "tastiera_range_offerta",
+    "tastiera_dopo_fine",
     "RANGE_OFFERTA",
 ]
